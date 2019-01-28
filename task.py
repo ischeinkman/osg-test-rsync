@@ -1,23 +1,24 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python
 
 import os
 import subprocess
 import random
 import sys
-from typing import Any, List
 
-def copy_test(src_file : str, dest_dir : str, kb_per_sec : int) -> subprocess.CompletedProcess:
-    assert(os.path.isfile(src_file))
-    assert(os.path.isdir(dest_dir))
+def copy_test(src_file, dest_dir, kb_per_sec):
+    print("Using file :   %s\n"%(src_file))
+    os.environ['X509_USER_PROXY'] = os.path.join(os.getcwd(), '../pilot_proxy')
+    #assert os.path.isfile(src_file), "File %s not found in directory %s\n%s"%(src_file, os.path.dirname(src_file), str(os.listdir(os.path.dirname(src_file))))
+    #assert os.path.isdir(dest_dir), "Dir %s not found"%(dest_dir)
     bitrate_flag = '--bwlimit=%d'%(kb_per_sec)
     arg_list = ['rsync', bitrate_flag, src_file, dest_dir]
-    result = subprocess.run(arg_list, capture_output=True)
+    result = subprocess.check_call(arg_list)
     dest_file = os.path.join(dest_dir, os.path.basename(src_file))
-    assert(os.path.isfile(dest_file))
+    assert os.path.isfile(dest_file)
     os.remove(dest_file)
     return result
 
-def main(argv : List[str]) -> int:
+def main(argv):
     
     # Parse the args 
 
@@ -40,7 +41,17 @@ def main(argv : List[str]) -> int:
         else:
             msg = 'Invalid flag : %s'%(flag)
             raise RuntimeError(msg)
-    
+
+    # Can also use the environment 
+    if source_list_path is None: 
+        source_list_path = os.environ['SOURCE_LIST_PATH']
+    if transfer_rate is None:
+        transfer_rate = int(os.environ['TRANSFER_RATE'])
+    if dest_dir is None:
+        dest_dir = os.environ['DEST_DIR']
+    if repetitions is None:
+        repetitions = os.environ['REPETITIONS']
+
     # Verify the args 
 
     if dest_dir is None:
@@ -69,11 +80,12 @@ def main(argv : List[str]) -> int:
     for _idx in range(0, repetitions):
         src = random.choice(file_list)
         trial_result = copy_test(src, dest_dir, transfer_rate)
-        if trial_result.returncode != 0:
-            return trial_result.returncode
+        if trial_result != 0:
+            return trial_result
     return 0
 
-err_code = main(sys.argv)
-if err_code != 0:
-    raise RuntimeError(err_code)
+if __name__ == "__main__":
+    err_code = main(sys.argv[1:])
+    if err_code != 0:
+        raise RuntimeError(err_code)
 
