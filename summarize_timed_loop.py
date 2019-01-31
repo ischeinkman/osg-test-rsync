@@ -32,8 +32,10 @@ def process_run(work_dir,run,concurrencies):
         tot_files=0
         tot_succ=0
         tot_fail=0
+        no_report=0
         parse_fail=0
         for jid in range(cc):
+            lines = []
             jfname=os.path.join(dirname,"job%i/concurrency_%i.out"%(jid,cc))
             try:
                 fd=open(jfname,'r')
@@ -41,6 +43,10 @@ def process_run(work_dir,run,concurrencies):
                     lines=fd.readlines()
                 finally:
                     fd.close()
+                if "Timeout reached" in lines[-1]:
+                    no_report += 1
+                    tot_files += 1
+                    continue 
                 arr=lines[-1].split()
                 succ=int(arr[1])
                 fail=int(arr[3])
@@ -50,6 +56,10 @@ def process_run(work_dir,run,concurrencies):
                 tot_fail+=fail
             except:
                 # just warn
+                if len(lines) <= 0:
+                    print('Failed parsing %s: Empty line.'%(jfname))
+                else:
+                    print('Failed parsing %s: Line was\n%s'%(jfname, lines[-1]))
                 parse_fail+=1
         if parse_fail>0: 
             print "Failed reading/parsing %i/%i files in %s"%(parse_fail,cc,os.path.join(dirname,"job%i"%jid))
@@ -57,7 +67,7 @@ def process_run(work_dir,run,concurrencies):
         if tot_files>0:
             avg_succ=tot_succ/tot_files
             avg_fail=tot_fail/tot_files
-            print "Run %i Concurrency %i\tAvg1 succ %i fail %i\tTotal succ %i fail %i"%(run,cc,avg_succ,avg_fail,tot_succ,tot_fail)
+            print "Run %i Concurrency %i\tAvg1 succ %i fail %i\tTotal succ %i fail %i no_report %d"%(run,cc,avg_succ,avg_fail,tot_succ,tot_fail, no_report)
     return
 
 
