@@ -4,10 +4,15 @@ import os
 import subprocess
 import random
 import sys
+import socket 
+import time
 
 def copy_test(src_file, dest_dir, kb_per_sec):
     print("Using file :   %s\n"%(src_file))
-    os.environ['X509_USER_PROXY'] = os.path.join(os.getcwd(), '../pilot_proxy')
+    if 'pilot_proxy' in os.listdir(os.getcwd()):
+        os.environ['X509_USER_PROXY'] = os.path.join(os.getcwd(), 'pilot_proxy')
+    else:
+        os.environ['X509_USER_PROXY'] = os.path.join(os.getcwd(), '../pilot_proxy')
     #assert os.path.isfile(src_file), "File %s not found in directory %s\n%s"%(src_file, os.path.dirname(src_file), str(os.listdir(os.path.dirname(src_file))))
     #assert os.path.isdir(dest_dir), "Dir %s not found"%(dest_dir)
     bitrate_flag = '--bwlimit=%d'%(kb_per_sec)
@@ -27,6 +32,7 @@ def main(argv):
     source_list_path = None
     repetitions = 1
 
+    print('Starting rsync test.')
     for flag in argv:
         if flag.endswith('.py'):
             continue
@@ -74,18 +80,51 @@ def main(argv):
     elif repetitions < 0:
         raise RuntimeError('Repetitions %d is invalid!'%(repetitions))
     
+    print('Args: %s %s %s %s'%(str(source_list_path), str(transfer_rate), str(dest_dir), str(repetitions)))
     # Run the copier
     file_list = open(source_list_path).read().split('\n')
 
+    num_bad = 0
     for _idx in range(0, repetitions):
         src = random.choice(file_list)
-        trial_result = copy_test(src, dest_dir, transfer_rate)
-        if trial_result != 0:
-            return trial_result
-    return 0
+        try:
+            trial_result = copy_test(src, dest_dir, transfer_rate)
+            if trial_result != 0:
+                print >> sys.stderr, 'Fail on host: %s'%(socket.gethostname())
+                print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
+                num_bad += 1
+        except:
+            import traceback
+            (e_type, e, trace) = sys.exc_info()[0:3]
+            print >> sys.stderr, 'Fail on host: %s'%(socket.gethostname())
+            print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
+            print >> sys.stderr, 'Found error when running.'
+            err_trace = traceback.format_exception(e_type, e, trace)
+            for msg in err_trace:
+                print >> sys.stderr, msg 
+            num_bad += 1
+        time.sleep(5)
+    print('Successes: %d Failures: %d'%(repetitions - num_bad, num_bad))
+    return num_bad
 
 if __name__ == "__main__":
-    err_code = main(sys.argv[1:])
-    if err_code != 0:
-        raise RuntimeError(err_code)
+    print >> sys.stderr, 'Running on host: %s'%(socket.gethostname())
+    print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
+    try:
+        main(sys.argv[1:])
+    except:
+        import traceback
+        efile = open('crashlog.txt', 'w')
+        (e_type, e, trace) = sys.exc_info()[0:3]
+        print >> sys.stderr, 'Found uncaught error in main when running.'
+        efile.write('Found uncaught error in main when running.')
+        print >> sys.stderr, 'Fail on host: %s'%(socket.gethostname())
+        print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
+        err_trace = traceback.format_exception(e_type, e, trace)
+        for msg in err_trace:
+            print >> sys.stderr, msg 
+            efile.write(msg)
+        efile.close()
+        
 
+        
