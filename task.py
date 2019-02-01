@@ -7,6 +7,21 @@ import sys
 import socket 
 import time
 
+def print_err(filename, location):
+    import traceback
+    if len(sys.exc_info()) >= 3:
+        (e_type, e, trace) = sys.exc_info()[0:3]
+        err_trace = traceback.format_exception(e_type, e, trace)
+    else:
+        err_trace = ['','Could not get trace!']
+    print >> sys.stderr, 'Found error when in %s running.'%(location)
+    print >> sys.stderr, 'Fail on host: %s'%(socket.gethostname())
+    print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
+    print >> sys.stderr, 'File: %s'%(filename)
+    for msg in err_trace:
+        print >> sys.stderr, msg 
+
+
 def copy_test(src_file, dest_dir, kb_per_sec):
     print("Using file :   %s\n"%(src_file))
     if 'pilot_proxy' in os.listdir(os.getcwd()):
@@ -94,14 +109,7 @@ def main(argv):
                 print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
                 num_bad += 1
         except:
-            import traceback
-            (e_type, e, trace) = sys.exc_info()[0:3]
-            print >> sys.stderr, 'Fail on host: %s'%(socket.gethostname())
-            print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
-            print >> sys.stderr, 'Found error when running.'
-            err_trace = traceback.format_exception(e_type, e, trace)
-            for msg in err_trace:
-                print >> sys.stderr, msg 
+            print_err(src, "repetition's for loop")
             num_bad += 1
         time.sleep(5)
     print('Successes: %d Failures: %d'%(repetitions - num_bad, num_bad))
@@ -113,18 +121,6 @@ if __name__ == "__main__":
     try:
         main(sys.argv[1:])
     except:
-        import traceback
-        efile = open('crashlog.txt', 'w')
-        (e_type, e, trace) = sys.exc_info()[0:3]
-        print >> sys.stderr, 'Found uncaught error in main when running.'
-        efile.write('Found uncaught error in main when running.')
-        print >> sys.stderr, 'Fail on host: %s'%(socket.gethostname())
-        print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
-        err_trace = traceback.format_exception(e_type, e, trace)
-        for msg in err_trace:
-            print >> sys.stderr, msg 
-            efile.write(msg)
-        efile.close()
-        
+        print_err('UNKNOWN', 'main')
 
-        
+
