@@ -43,7 +43,7 @@ def process_run(work_dir,run,concurrencies):
                     lines=fd.readlines()
                 finally:
                     fd.close()
-                if "Timeout reached" in lines[-1]:
+                if len(lines) == 0 or "Timeout reached" in lines[-1]:
                     no_report += 1
                     tot_files += 1
                     continue 
