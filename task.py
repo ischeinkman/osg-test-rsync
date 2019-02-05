@@ -20,6 +20,11 @@ def print_err(filename, location):
     print >> sys.stderr, 'File: %s'%(filename)
     for msg in err_trace:
         print >> sys.stderr, msg 
+def get_redhat_version():
+    release_file = open('/etc/redhat-release', 'r')
+    release_str = release_file.read()
+    release_file.close()
+    return release_str
 
 
 def copy_test(src_file, dest_dir, kb_per_sec):
@@ -28,6 +33,8 @@ def copy_test(src_file, dest_dir, kb_per_sec):
         os.environ['X509_USER_PROXY'] = os.path.join(os.getcwd(), 'pilot_proxy')
     else:
         os.environ['X509_USER_PROXY'] = os.path.join(os.getcwd(), '../pilot_proxy')
+    # First we check that rsync exists
+    subprocess.check_call(['which', 'rsync'])
     #assert os.path.isfile(src_file), "File %s not found in directory %s\n%s"%(src_file, os.path.dirname(src_file), str(os.listdir(os.path.dirname(src_file))))
     #assert os.path.isdir(dest_dir), "Dir %s not found"%(dest_dir)
     bitrate_flag = '--bwlimit=%d'%(kb_per_sec)
@@ -46,8 +53,12 @@ def main(argv):
     transfer_rate = None 
     source_list_path = None
     repetitions = 1
+    print >> sys.stderr, 'Running on host: %s'%(socket.gethostname())
+    print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
 
+    redhat_version = get_redhat_version()
     print('Starting rsync test.')
+    print('Host OS: %s'%(redhat_version))
     for flag in argv:
         if flag.endswith('.py'):
             continue
