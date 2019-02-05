@@ -8,18 +8,22 @@ import socket
 import time
 
 def print_err(filename, location):
-    import traceback
-    if len(sys.exc_info()) >= 3:
-        (e_type, e, trace) = sys.exc_info()[0:3]
-        err_trace = traceback.format_exception(e_type, e, trace)
-    else:
-        err_trace = ['','Could not get trace!']
-    print >> sys.stderr, 'Found error when in %s running.'%(location)
-    print >> sys.stderr, 'Fail on host: %s'%(socket.gethostname())
-    print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
-    print >> sys.stderr, 'File: %s'%(filename)
-    for msg in err_trace:
-        print >> sys.stderr, msg 
+    try:
+        import traceback
+        if len(sys.exc_info()) >= 3:
+            (e_type, e, trace) = sys.exc_info()[0:3]
+            err_trace = traceback.format_exception(e_type, e, trace)
+        else:
+            err_trace = ['','Could not get trace!']
+        print >> sys.stderr, 'Found error when in %s running.'%(location)
+        print >> sys.stderr, 'Fail on host: %s'%(socket.gethostname())
+        print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
+        print >> sys.stderr, 'File: %s'%(filename)
+        for msg in err_trace:
+            print >> sys.stderr, msg 
+    except:
+        print >> sys.stderr, "DYING BADLY"
+
 def get_redhat_version():
     release_file = open('/etc/redhat-release', 'r')
     release_str = release_file.read()
@@ -116,7 +120,7 @@ def main(argv):
         for _ in range(0, 5):
             if src is not None and len(src.strip()) > 0:
                 break 
-        src = random.choice(file_list)
+            src = random.choice(file_list)
         try:
             trial_result = copy_test(src, dest_dir, transfer_rate)
             if trial_result != 0:
@@ -131,8 +135,6 @@ def main(argv):
     return num_bad
 
 if __name__ == "__main__":
-    print >> sys.stderr, 'Running on host: %s'%(socket.gethostname())
-    print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
     try:
         main(sys.argv[1:])
     except:
