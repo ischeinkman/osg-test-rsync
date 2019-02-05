@@ -101,6 +101,10 @@ def main(argv):
 
     num_bad = 0
     for _idx in range(0, repetitions):
+        src = ""
+        for _ in range(0, 5):
+            if src is not None and len(src.strip()) > 0:
+                break 
         src = random.choice(file_list)
         try:
             trial_result = copy_test(src, dest_dir, transfer_rate)
