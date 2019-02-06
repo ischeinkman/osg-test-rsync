@@ -57,6 +57,7 @@ def main(argv):
     transfer_rate = None 
     source_list_path = None
     repetitions = 1
+    process_number = None
     print >> sys.stderr, 'Running on host: %s'%(socket.gethostname())
     print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
 
@@ -74,6 +75,8 @@ def main(argv):
             dest_dir = flag[len('--tmpdir='):]
         elif flag.startswith('--repeat='):
             repetitions = int(flag[len('--repeat='):])
+        elif flag.startswith('--procid='):
+            process_number = int(flag[len('--procid='):])
         else:
             msg = 'Invalid flag : %s'%(flag)
             raise RuntimeError(msg)
@@ -115,12 +118,17 @@ def main(argv):
     file_list = open(source_list_path).read().split('\n')
 
     num_bad = 0
-    for _idx in range(0, repetitions):
+    for idx in range(0, repetitions):
         src = ""
-        for _ in range(0, 5):
-            if src is not None and len(src.strip()) > 0:
-                break 
-            src = random.choice(file_list)
+        if process_number is None or process_number < 0:
+            for _ in range(0, 5):
+                if src is not None and len(src.strip()) > 0:
+                    break 
+                src = random.choice(file_list).split(' ')[0].strip()
+        else:
+            base = process_number * repetitions
+            name_idx = base + idx 
+            src = file_list[name_idx].split(' ')[0].strip()
         try:
             trial_result = copy_test(src, dest_dir, transfer_rate)
             if trial_result != 0:
