@@ -63,7 +63,7 @@ def parse_job(path):
     current_msg = ''
     should_skip = True
     for ln in stderr_lines: 
-        if len(ln) < 2 or ln.startswith('Running on host') or ln.startswith('Fail on host') or ln.startswith('Timestamp: ') or ln.startswith('File: '):
+        if len(ln) < 2 or ln.startswith('Running on host') or ln.startswith('Fail on host') or ln.startswith('Timestamp: ') or ln.startswith('File: ') or ln.startswith('INFO') or ln.startswith('WARNING'):
             continue 
         elif ln.startswith('Found error '):
             if len(current_msg) > 0 and not should_skip:
