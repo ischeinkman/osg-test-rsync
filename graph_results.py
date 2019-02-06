@@ -4,9 +4,9 @@ import pandas as pd
 
 def ecount_graph(file_name, date_part = ''):
     import matplotlib.pylab as plt
-    plt.w
     df = pd.read_csv(file_name, sep='\s+')
     df.sort_values(['FullErrors', 'PartialErrors', 'Successes'], inplace=True)
+    plt.title('Error rates at %s'%(date_part))
     data = df.values.transpose()
     names = data[0]
     successes = data[1]
@@ -25,8 +25,8 @@ def ecount_graph(file_name, date_part = ''):
 
     ind = range(0, len(names))
     sg = plt.bar(ind, success_frac, width = 0.3)
-    pg = plt.bar(ind, partial_frac, bottom=success_frac)
-    fg = plt.bar(ind, full_frac, bottom=success_frac + partial_frac)
+    pg = plt.bar(ind, partial_frac, bottom=success_frac, width=0.3)
+    fg = plt.bar(ind, full_frac, bottom=success_frac + partial_frac, width=0.3)
     plt.xticks(ind, names, rotation='vertical', fontsize='small')
     plt.ylabel('Fractional Rate')
     plt.legend((sg[0], pg[0], fg[0]), ('Success', 'Some errors', 'Complete failure'))
