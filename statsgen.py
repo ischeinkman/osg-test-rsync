@@ -72,7 +72,7 @@ def parse_job(path):
             current_msg = ''
         else:
             current_msg += '\n' + ln 
-    if len(current_msg) > 0:
+    if len(current_msg) > 0 and not should_skip:
         error_msgs.append(current_msg)
     assert len(error_msgs) == failures, "Mismatching messages: %d vs %d\nMessages: %s"%(len(error_msgs), failures, str(error_msgs))
     error_data = []
