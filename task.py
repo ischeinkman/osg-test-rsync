@@ -33,12 +33,13 @@ def get_redhat_version():
 
 def copy_test(src_file, dest_dir, kb_per_sec):
     print("Using file :   %s\n"%(src_file))
-    if 'pilot_proxy' in os.listdir(os.getcwd()):
+    if 'virgo' in os.environ['X509_USER_PROXY']:
+        pass
+    elif 'pilot_proxy' in os.listdir(os.getcwd()):
         os.environ['X509_USER_PROXY'] = os.path.join(os.getcwd(), 'pilot_proxy')
     else:
         os.environ['X509_USER_PROXY'] = os.path.join(os.getcwd(), '../pilot_proxy')
     # First we check that rsync exists
-    subprocess.check_call(['which', 'rsync'])
     #assert os.path.isfile(src_file), "File %s not found in directory %s\n%s"%(src_file, os.path.dirname(src_file), str(os.listdir(os.path.dirname(src_file))))
     #assert os.path.isdir(dest_dir), "Dir %s not found"%(dest_dir)
     bitrate_flag = '--bwlimit=%d'%(kb_per_sec)
@@ -47,6 +48,8 @@ def copy_test(src_file, dest_dir, kb_per_sec):
     dest_file = os.path.join(dest_dir, os.path.basename(src_file))
     assert os.path.isfile(dest_file)
     os.remove(dest_file)
+    sys.stdout.flush()
+    sys.stderr.flush()
     return result
 
 def main(argv):
@@ -60,6 +63,7 @@ def main(argv):
     process_number = None
     print >> sys.stderr, 'Running on host: %s'%(socket.gethostname())
     print >> sys.stderr, 'Timestamp: %s'%(str(time.localtime()))
+    subprocess.check_call(['which', 'rsync'])
 
     redhat_version = get_redhat_version()
     print('Starting rsync test.')
