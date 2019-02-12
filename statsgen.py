@@ -41,6 +41,8 @@ def parse_job(path):
 
     stderr_file = 'concurrency_%d.err'%concurrency
     stderr_path = os.path.join(path, stderr_file)
+    if not os.path.isfile(stderr_path):
+        return FileTest(concurrency, 'E', run, job, filenames, 'E', [('Stderr is empty', 'E')])
     stderr_fl = open(stderr_path, 'r')
     stderr_data = stderr_fl.read()
     stderr_fl.close()
