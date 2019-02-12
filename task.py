@@ -42,8 +42,11 @@ def copy_test(src_file, dest_dir, kb_per_sec):
     # First we check that rsync exists
     #assert os.path.isfile(src_file), "File %s not found in directory %s\n%s"%(src_file, os.path.dirname(src_file), str(os.listdir(os.path.dirname(src_file))))
     #assert os.path.isdir(dest_dir), "Dir %s not found"%(dest_dir)
-    bitrate_flag = '--bwlimit=%d'%(kb_per_sec)
-    arg_list = ['rsync', bitrate_flag, src_file, dest_dir]
+    if kb_per_sec is not None:
+        bitrate_flag = '--bwlimit=%d'%(kb_per_sec)
+        arg_list = ['rsync', bitrate_flag, src_file, dest_dir]
+    else: 
+        arg_list = ['rsync', src_file, dest_dir]
     result = subprocess.check_call(arg_list)
     dest_file = os.path.join(dest_dir, os.path.basename(src_file))
     assert os.path.isfile(dest_file)
@@ -88,7 +91,7 @@ def main(argv):
     # Can also use the environment 
     if source_list_path is None: 
         source_list_path = os.environ['SOURCE_LIST_PATH']
-    if transfer_rate is None:
+    if transfer_rate is None and 'TRANSFER_RATE' in os.environ:
         transfer_rate = int(os.environ['TRANSFER_RATE'])
     if dest_dir is None:
         dest_dir = os.environ['DEST_DIR']
@@ -102,9 +105,7 @@ def main(argv):
     elif not os.path.isdir(dest_dir):
         raise RuntimeError('Could not find destination dir %s!'%(dest_dir))
 
-    if transfer_rate is None:
-        raise RuntimeError('Transfer rate was not passed!')
-    elif transfer_rate < 0:
+    if transfer_rate is not None and  transfer_rate < 0:
         raise RuntimeError('Transfer rate %d is invalid!'%(transfer_rate))
 
     if source_list_path is None:
