@@ -5,7 +5,7 @@ import pandas as pd
 def ecount_graph(file_name, date_part = ''):
     import matplotlib.pylab as plt
     df = pd.read_csv(file_name, sep='\s+')
-    df.sort_values(['FullErrors', 'PartialErrors', 'Successes'], inplace=True)
+    df.sort_values(['Concurrency'], inplace=True)
     plt.title('Error rates at %s'%(date_part))
     data = df.values.transpose()
     names = data[0]
