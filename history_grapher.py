@@ -161,6 +161,35 @@ def make_comparison_data(all_data, run_a, run_b, field = 'KB/s'):
         else:
             retval[lvl]['b'] = -1
         print('%s,%f,%f,%f'%(lvl, retval[lvl]['a'], retval[lvl]['b'], retval[lvl]['avg']))
+    
+def get_speed_data(all_data, run_name):
+    retval = {}
+
+    usable_entries = []
+    site = ''
+    for entry in all_data:
+        if entry['IlanTime'] == run_name:
+            usable_entries.append(entry)
+            site = entry['MATCH_GLIDEIN_Site']
+    print(site)
+    stratified_entries = stratify_run_data(usable_entries)
+    for outer in stratified_entries:
+        retval[outer] = {}
+        cummulative = 0.0
+        count = 0
+        for inner in stratified_entries[outer]:
+            for entry in stratified_entries[outer][inner]:
+                if not 'KB/s' in entry:
+                    continue
+                cummulative += float(entry['KB/s'])
+                count += 1
+        if count <= 0:
+            print('Bad conc: %s'%(inner))
+            continue
+        retval[outer] = {'sum' : cummulative, 'avg' : cummulative/count, 'count' : count}
+    return retval 
+
+
 
 def graph_csv(file, primary_idx = 0, secondary_idx = -1):
     import matplotlib.pylab as plt
@@ -183,11 +212,12 @@ def graph_csv(file, primary_idx = 0, secondary_idx = -1):
     sg = plt.bar(ind, y_data)
     plt.savefig("%s.png"%(file))
 
-def graph_csv_multi(file, primary_idx = 0, secondary_idx = -2, third_idx = -3):
+def graph_csv_multi(file, primary_idx = 0, y_list = [1, 2, 3]):
     import matplotlib.pylab as plt
     import pandas as pd
     import time
     import numpy as np
+    valid_colors = ['r', 'b', 'g', 'c', 'm', 'k', 'y']
     df = pd.read_csv(file)
     x_header = df.columns[primary_idx]
     y_header = 'KB/s'
@@ -197,22 +227,116 @@ def graph_csv_multi(file, primary_idx = 0, secondary_idx = -2, third_idx = -3):
     df.sort_values([x_header], inplace=True)
     all_data = df.values.transpose()
     x_data = all_data[primary_idx]
-    y_data_a = all_data[secondary_idx]
-    y_data_b = all_data[third_idx]
     ind = np.arange(0, len(x_data))
     plt.xticks(ind, x_data, rotation='vertical', fontsize='small')
-    sga = plt.bar(ind, y_data_a, width=0.3, color='r')
-    sgb = plt.bar(ind+0.3, y_data_b, width=0.3, color='b')
-    plt.legend([sga[0], sgb[0]], (df.columns[secondary_idx], df.columns[third_idx]))
+    legend_keys = []
+    legend_bars = []
+    for y_idx in range(0, len(y_list)):
+        cur_data = all_data[y_list[y_idx]]
+        sga = plt.bar(ind+0.3 * y_idx, cur_data, width=0.3, color=valid_colors[y_idx % len(valid_colors)])
+        legend_bars.append(sga)
+        legend_keys.append(df.columns[y_list[y_idx]])
+    plt.legend(legend_bars, legend_keys)
     plt.savefig("%s.png"%(file))
 
+def parse_flag(flag):
+    if not flag.startswith('--'):
+        return flag 
+    if not '=' in flag:
+        return flag[2:]
+    val_start = flag.index('=')
+    key = flag[2:val_start]
+    val = flag[val_start + 1:]
+    return (key, val)
+
+def parse_flags(args):
+    unnamed_list = []
+    unvalued_list = []
+    flag_pairs = {}
+    for flag in args:
+        flag_out = parse_flag(flag)
+        if flag_out == flag:
+            unnamed_list.append(flag_out)
+        elif type(flag_out) == type(''):
+            unvalued_list.append(flag_out)
+        else:
+            flag_pairs[flag_out[0]] = flag_out[1]
+    return (unnamed_list, unvalued_list, flag_pairs)
+
+def parse_run_list(raw):
+    raw_list = raw.split(',')
+    retval = []
+    for itm in raw_list:
+        timestamp_start = itm.find("2019")
+        timestamp_end = timestamp_start + 15
+        retval.append(itm[timestamp_start:timestamp_end])
+    return retval
+
+def get_combined_data(alldt, runlist):
+    run_to_data = {}
+    for run in runlist:
+        run_to_data[run] = get_speed_data(alldt, run)
+    run_to_data['avg'] = {}
+    run_to_data['sum'] = {}
+    run_to_data['count'] = {}
+    for run in runlist:
+        for conc in run_to_data[run]:
+            if not conc in run_to_data['sum']:
+                run_to_data['sum'][conc] = 0.0
+                run_to_data['count'][conc] = 0.0
+                run_to_data['avg'][conc] = 0.0
+            run_to_data['sum'][conc] += run_to_data[run][conc]['sum']
+            run_to_data['count'][conc] += run_to_data[run][conc]['count']
+    for conc in run_to_data['sum']:
+        run_to_data['avg'][conc] = run_to_data['sum'][conc]/run_to_data['count'][conc]
+    return run_to_data
+
+
 def main(args):
-    if '--graph' in args:
+    flags = parse_flags(args)
+    if 'graph' in flags[1]:
         flname = [f for f in args if not f == '--graph'][0]
+        graph_csv(flname)
+        return
+    elif 'graphmulti' in flags[1]:
+        flname = flags[0][0]
         graph_csv_multi(flname)
         return
-    a = args[0]
-    b = args[1]
+
+    elif 'sing' in flags[1]:
+        flname = [f for f in args if 'history' in f.lower()][0]
+        run = [f for f in args if '2019' in f.lower() and not 'history' in f.lower()][0]
+        print('F: %s, R: %s'%(flname, run))
+        f = open(flname, 'r')
+        raw = f.read()
+        f.close()
+        print('Read file.')
+        alldt = parse_history_file(raw)
+        print('Parsed file.')
+        rdt = get_speed_data(alldt, run)
+        print('Built output.')
+        for outer in rdt:
+            avg = rdt[outer]['avg']
+            print('%s, %f'%(outer, avg))
+        return
+    elif 'multi' in flags[1]:
+        all_flnames = flags[2]['files'].split(',')
+        all_runs = parse_run_list(flags[2]['runs'])
+        alldt = []
+        for flname in all_flnames:
+            f = open(flname, 'r')
+            raw = f.read()
+            f.close()
+            print('Read file %s.'%(flname))
+            cur_dt = parse_history_file(raw)
+            print('Parsed file %s.'%(flname))
+            alldt += cur_dt
+        parsed_dt = get_combined_data(alldt, all_runs)
+        for conc in parsed_dt['avg']:
+            print('%s,%f'%(conc, parsed_dt['avg'][conc]))
+
+    a = flags[0][0]
+    b = flags[0][1]
     dt = []
     for orig in args[2:]:
         orig_f = open(orig, 'r')
