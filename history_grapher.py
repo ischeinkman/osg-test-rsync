@@ -1,7 +1,7 @@
 
 import os
 import sys
-
+from math import * 
 def parse_history_file(file_data):
     retval = []
     cur_entry = None
@@ -174,7 +174,7 @@ def get_speed_data(all_data, run_name):
     print(site)
     stratified_entries = stratify_run_data(usable_entries)
     for outer in stratified_entries:
-        retval[outer] = {}
+        retval[outer] = {'entries' : []}
         cummulative = 0.0
         count = 0
         for inner in stratified_entries[outer]:
@@ -183,10 +183,11 @@ def get_speed_data(all_data, run_name):
                     continue
                 cummulative += float(entry['KB/s'])
                 count += 1
+                retval[outer]['entries'].append(float(entry['KB/s']))
         if count <= 0:
             print('Bad conc: %s'%(inner))
             continue
-        retval[outer] = {'sum' : cummulative, 'avg' : cummulative/count, 'count' : count}
+        retval[outer].update({'sum' : cummulative, 'avg' : cummulative/count, 'count' : count})
     return retval 
 
 
@@ -279,17 +280,65 @@ def get_combined_data(alldt, runlist):
     run_to_data['avg'] = {}
     run_to_data['sum'] = {}
     run_to_data['count'] = {}
+    run_to_data['entries'] = {}
     for run in runlist:
         for conc in run_to_data[run]:
             if not conc in run_to_data['sum']:
                 run_to_data['sum'][conc] = 0.0
                 run_to_data['count'][conc] = 0.0
+                run_to_data['std'] = {}
+                run_to_data['entries'][conc] = []
                 run_to_data['avg'][conc] = 0.0
             run_to_data['sum'][conc] += run_to_data[run][conc]['sum']
             run_to_data['count'][conc] += run_to_data[run][conc]['count']
+            run_to_data['entries'][conc] += run_to_data[run][conc]['entries']
     for conc in run_to_data['sum']:
-        run_to_data['avg'][conc] = run_to_data['sum'][conc]/run_to_data['count'][conc]
+        print('Calcing stats for conc %s'%(conc))
+        ln = run_to_data['count'][conc]
+        mean= run_to_data['sum'][conc]/ln
+        run_to_data['avg'][conc] = mean
+
+        sqerr_sum = 0.0
+        sqerr_ln = 0
+        second_mean = 0.0
+
+        err_min = -1.0
+        err_max = -1.0
+        big_err = 0
+        zro = 0
+        run_to_data['entries'][conc].sort()
+        for itm in run_to_data['entries'][conc]:
+            sqerr_curr = (itm - mean) * (itm - mean)
+            err_curr = sqrt(sqerr_curr)
+            if err_max < err_curr or err_max < 0.0:
+                err_max = err_curr
+            if err_min > err_curr or err_min < 0.0:
+                err_min = err_curr
+            if err_curr >= mean:
+                big_err += 1
+            sqerr_sum += sqerr_curr
+            second_mean += itm
+            sqerr_ln += 1
+        stddev = sqrt(sqerr_sum/sqerr_ln)
+        print('Mean: %f vs %f'%(mean, second_mean/sqerr_ln))
+        print("Max: %f, min: %f"%(run_to_data['entries'][conc][-1], run_to_data['entries'][conc][0]))
+        print('STD: %f'%(stddev))
+        print('Sum sqerr: %f, sqerr_len: %d (vs %d)'%(sqerr_sum, sqerr_ln, run_to_data['count'][conc]))
+        print('Error min: %f, max: %f, big: %d, 0: %d'%(err_min, err_max, big_err, zro))
+        run_to_data['std'][conc] = stddev
     return run_to_data
+
+def median(lst):
+    lst_len = len(lst)
+    if lst_len % 2 == 1:
+        med_idx = int(floor(lst_len/2))
+        return lst[med_idx]
+    else: 
+        upper_idx = int(floor(lst_len/2))
+        upper = lst[upper_idx]
+        lower_idx = upper_idx - 1
+        lower = lst[lower_idx]
+        return (0.5 * lower) + (0.5 * upper)
 
 
 def main(args):
@@ -332,8 +381,16 @@ def main(args):
             print('Parsed file %s.'%(flname))
             alldt += cur_dt
         parsed_dt = get_combined_data(alldt, all_runs)
-        for conc in parsed_dt['avg']:
-            print('%s,%f'%(conc, parsed_dt['avg'][conc]))
+        print('Concurrency,Mean,Stddev,Median,Min,Max')
+        keys = map(lambda a: int(a), parsed_dt['avg'].keys())
+        keys.sort()
+        for concl in keys:
+            conc = str(concl)
+            print('%s,%f,%f,%f,%f,%f'%(
+                conc, 
+                parsed_dt['avg'][conc], parsed_dt['std'][conc], median(parsed_dt['entries'][conc]),
+                parsed_dt['entries'][conc][0], parsed_dt['entries'][conc][-1], 
+            ))
 
     a = flags[0][0]
     b = flags[0][1]
