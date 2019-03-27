@@ -240,6 +240,51 @@ def graph_csv_multi(file, primary_idx = 0, y_list = [1, 2, 3]):
     plt.legend(legend_bars, legend_keys)
     plt.savefig("%s.png"%(file))
 
+def graph_muchdata(kwargs):
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pylab as plt
+
+    if len(kwargs) and 'config_file' in kwargs:
+        import json 
+        fh = open(kwargs['config_file'], 'r')
+        kwargs = json.load(fh)
+        fh.close()
+
+    files = kwargs['files']
+
+    fig = plt.figure(figsize=(12,6),dpi=400)
+    ax = fig.add_subplot(111)
+
+    data_by_file = {}
+    for fname in files:
+        data_by_file[fname] = pd.read_csv(fname)
+    
+    x_header = kwargs.get('x_header') or list(data_by_file.values())[0].columns[0]
+    plt.xlabel(x_header)
+    x_data = list(data_by_file.values())[0][x_header]
+    ind = np.arange(0, len(x_data))
+    plt.xticks(x_data, rotation='vertical', fontsize='small')
+    plt.ylabel(kwargs['y_label'])
+
+    file_headers = kwargs['file_headers']
+    file_colors = kwargs['file_colors']
+
+    for y_header in kwargs['y_headers']:
+        conf = kwargs.get(y_header) or {}
+        for fname in data_by_file:
+            x_data = data_by_file[fname][x_header]
+            y_data = data_by_file[fname][y_header]
+            data_label = '%s %s'%(file_headers[fname], y_header)
+            linestyle = conf.get('line_style') or None 
+            linecolor = file_colors[fname] or 'blue'
+            ax.plot(x_data, y_data, label = data_label, linestyle=linestyle, color=linecolor)
+    ax.legend(loc=(kwargs.get('legend_loc') or 0))
+    outfile_name = kwargs.get('output') or ('++'.join(files) + '.png')
+    plt.savefig(outfile_name)
+
+
+
 def parse_flag(flag):
     if not flag.startswith('--'):
         return flag 
@@ -391,6 +436,11 @@ def main(args):
                 parsed_dt['avg'][conc], parsed_dt['std'][conc], median(parsed_dt['entries'][conc]),
                 parsed_dt['entries'][conc][0], parsed_dt['entries'][conc][-1], 
             ))
+        return 
+    elif 'newgraph' in flags[1]:
+        json_file = flags[2]['config']
+        graph_muchdata({'config_file' : json_file})
+        return
 
     a = flags[0][0]
     b = flags[0][1]

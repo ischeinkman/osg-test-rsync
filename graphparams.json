@@ -1,0 +1,40 @@
+{
+"files" : [
+    "low_mem_nikef_muchdata.csv",
+    "high_mem_nikef_muchdata.csv"
+],
+
+"x_header" : "Concurrency",
+"y_headers" : ["Mean", "Min", "Max"],
+"y_label" : "Rate",
+
+"file_headers" : {
+    "low_mem_nikef_muchdata.csv"  : "NIKHEF Low Memory", 
+    "high_mem_nikef_muchdata.csv" : "NIKHEF High Memory", 
+    "ucsd_muchdata.csv" : "UCSD"
+},
+"file_colors" : {
+    "low_mem_nikef_muchdata.csv"  : "green", 
+    "high_mem_nikef_muchdata.csv" : "blue", 
+    "ucsd_muchdata.csv" : "red"
+},
+
+"Min" : {
+    "line_style" : "dotted"
+},
+"Max" : {
+    "line_style" : "dashed"
+},
+"Mean" : {
+    "line_style" : "dashed"
+},
+
+"Median" : {
+    "line_style" : "solid"
+},
+"Stddev" : {
+    "line_style" : "dotted"
+},
+"output" : "outfile.png",
+"legend_loc" : 0
+}
